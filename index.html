@@ -166,15 +166,15 @@
 <script>
 // ── Data ──────────────────────────────────────────────────────────
 const SECTIONS = [
-  { id: 'personal',   title: '个人情况',     icon: '👤', items: ['姓名/职位', '背景经历', '性格风格'] },
-  { id: 'inst',       title: '机构情况',     icon: '🏢', items: ['机构类型', '机构规模', '历史背景'] },
-  { id: 'team',       title: '团队情况',     icon: '👥', items: ['团队规模', '兄弟单位', '专家库/外部资源'] },
-  { id: 'pref',       title: '投资偏好',     icon: '🎯', items: ['偏好行业', '偏好阶段', '估值范围', '单笔金额', '偏好地域'] },
-  { id: 'fund',       title: '基金情况',     icon: '💰', items: ['基金期数', '基金规模', '募集进度', '存续期'] },
-  { id: 'return',     title: '落地返投情况', icon: '📍', items: ['是否要求返投', '返投比例', '落地城市'] },
-  { id: 'dynamic',    title: '投资动态',     icon: '📈', items: ['最近投资案例', '今年KPI/目标', '出手频率'] },
-  { id: 'decision',   title: '决策情况',     icon: '⚖️', items: ['决策流程', '关键决策人', '决策周期'] },
-  { id: 'other',      title: '其他',         icon: '📝', items: ['其他信息'] },
+  { id: 'personal',  title: '个人情况',     icon: '👤' },
+  { id: 'inst',      title: '机构情况',     icon: '🏢' },
+  { id: 'team',      title: '团队情况',     icon: '👥' },
+  { id: 'pref',      title: '投资偏好',     icon: '🎯' },
+  { id: 'fund',      title: '基金情况',     icon: '💰' },
+  { id: 'return',    title: '落地返投情况', icon: '📍' },
+  { id: 'dynamic',   title: '投资动态',     icon: '📈' },
+  { id: 'decision',  title: '决策情况',     icon: '⚖️' },
+  { id: 'other',     title: '其他',         icon: '📝' },
 ];
 
 const SYSTEM_PROMPT = `你是一位专业的 FA 会议纪要整理助理。
@@ -194,53 +194,30 @@ function buildUserPrompt(date, name, inst, transcript) {
 会议记录：
 ${transcript}
 
-请严格按以下格式，将原文内容整理为专业的第三人称书面表述（禁止出现"我们""我""你"，用机构名称代替；语言通顺简洁；未提及的填"未提及"）：
+请严格按以下格式输出，将原文内容整理为专业的第三人称书面表述：
+- 禁止出现"我们""我""你"，用机构名称或"该机构""该投资人"代替
+- 每个大类下，根据会议内容自行决定列出哪些要点，每条用 "- 要点名称：内容" 格式
+- 要点名称由你根据内容自行判断，不需要固定
+- 该大类无相关内容时，只写一条：- 未提及
 
 ## 1. 个人情况
-- 姓名/职位：
-- 背景经历：
-- 性格风格：
 
 ## 2. 机构情况
-- 机构类型：
-- 机构规模：
-- 历史背景：
 
 ## 3. 团队情况
-- 团队规模：
-- 兄弟单位：
-- 专家库/外部资源：
 
 ## 4. 投资偏好
-- 偏好行业：
-- 偏好阶段：
-- 估值范围：
-- 单笔金额：
-- 偏好地域：
 
 ## 5. 基金情况
-- 基金期数：
-- 基金规模：
-- 募集进度：
-- 存续期：
 
 ## 6. 落地返投情况
-- 是否要求返投：
-- 返投比例：
-- 落地城市：
 
 ## 7. 投资动态
-- 最近投资案例：
-- 今年KPI/目标：
-- 出手频率：
 
 ## 8. 决策情况
-- 决策流程：
-- 关键决策人：
-- 决策周期：
 
 ## 9. 其他
-- 其他信息：`;
+`;
 }
 
 // ── Init ──────────────────────────────────────────────────────────
@@ -305,7 +282,7 @@ function setBusy(busy) {
   }
 }
 
-// ── Build section cards ─────────────────────────────────────────────
+// ── Build section cards (loading state) ────────────────────────────
 function initSections() {
   document.getElementById('emptyState').classList.add('hidden');
   document.getElementById('copyArea').classList.add('hidden');
@@ -318,15 +295,6 @@ function initSections() {
     card.id = `card-${s.id}`;
     card.className = 'bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm fadein';
     card.style.animationDelay = `${idx * 40}ms`;
-
-    const rows = s.items.map(item => {
-      const key = itemKey(s.id, item);
-      return `<div class="flex items-start py-2.5 px-4 border-b border-slate-100 last:border-0">
-        <span class="text-xs font-medium text-slate-500 w-28 shrink-0 pt-0.5 leading-relaxed">${item}</span>
-        <span id="${key}" class="text-sm text-slate-300 flex-1 italic leading-relaxed">等待中…</span>
-      </div>`;
-    }).join('');
-
     card.innerHTML = `
       <div class="px-4 py-3 bg-gradient-to-r from-slate-50 to-white border-b border-slate-200 flex items-center gap-2">
         <span class="text-sm leading-none">${s.icon}</span>
@@ -337,68 +305,63 @@ function initSections() {
           <span class="blink w-1.5 h-1.5 bg-blue-400 rounded-full inline-block" style="animation-delay:.4s"></span>
         </span>
       </div>
-      ${rows}`;
+      <div id="body-${s.id}" class="px-4 py-3 text-sm text-slate-300 italic">等待中…</div>`;
     out.appendChild(card);
   });
 }
 
-function itemKey(sectionId, itemLabel) {
-  return `v-${sectionId}-${itemLabel.replace(/[\/\s]/g, '_')}`;
-}
-
-// ── Parse AI response → fill cells ─────────────────────────────────
+// ── Parse AI response → fill cards dynamically ─────────────────────
 function renderParsed(raw) {
-  // Split into sections by "## N. Title"
   const sectionBlocks = raw.split(/(?=##\s*\d+\.)/);
 
-  const parsed = {};
+  const parsed = {}; // title → [{key, val}]
   for (const block of sectionBlocks) {
     const titleMatch = block.match(/##\s*\d+\.\s*(.+)/);
     if (!titleMatch) continue;
     const title = titleMatch[1].trim();
-    const items = {};
-    const lines = block.split('\n');
-    for (const line of lines) {
-      // Match "- 键：值" or "- 键:值"
-      const m = line.match(/^-\s*(.+?)[：:]\s*([\s\S]+)$/);
-      if (m) items[m[1].trim()] = m[2].trim();
+    const bullets = [];
+    for (const line of block.split('\n')) {
+      const m = line.match(/^-\s*(.+?)[：:]\s*(.+)$/);
+      if (m) bullets.push({ key: m[1].trim(), val: m[2].trim() });
+      else if (/^-\s*未提及/.test(line.trim())) bullets.push({ key: null, val: '未提及' });
     }
-    parsed[title] = items;
+    parsed[title] = bullets;
   }
 
   SECTIONS.forEach(s => {
     document.getElementById(`spin-${s.id}`)?.classList.add('hidden');
 
-    // Find matching section (fuzzy by title)
-    let data = {};
-    for (const [title, items] of Object.entries(parsed)) {
-      if (title.includes(s.title) || s.title.includes(title)) { data = items; break; }
+    // Match section by title
+    let bullets = null;
+    for (const [title, data] of Object.entries(parsed)) {
+      if (title.includes(s.title) || s.title.includes(title)) { bullets = data; break; }
     }
 
-    s.items.forEach(label => {
-      const el = document.getElementById(itemKey(s.id, label));
-      if (!el) return;
+    const body = document.getElementById(`body-${s.id}`);
+    if (!body) return;
 
-      // Fuzzy-match sub-item key
-      let val = null;
-      for (const [k, v] of Object.entries(data)) {
-        if (k.includes(label) || label.includes(k) || normalize(k) === normalize(label)) {
-          val = v; break;
-        }
-      }
+    if (!bullets || bullets.length === 0) {
+      body.innerHTML = `<span class="text-slate-400 italic">未提及</span>`;
+      return;
+    }
 
-      if (val && val !== '未提及') {
-        el.textContent = val;
-        el.className = 'text-sm text-slate-800 flex-1 leading-relaxed';
-      } else {
-        el.textContent = '未提及';
-        el.className = 'text-sm text-slate-400 flex-1 italic leading-relaxed';
-      }
-    });
+    // Single "未提及" entry
+    if (bullets.length === 1 && bullets[0].val === '未提及') {
+      body.innerHTML = `<span class="text-slate-400 italic">未提及</span>`;
+      return;
+    }
+
+    // Render dynamic rows
+    body.className = '';
+    body.innerHTML = bullets.map(({ key, val }) => {
+      const isNA = val === '未提及';
+      return `<div class="flex items-start py-2.5 px-4 border-b border-slate-100 last:border-0">
+        ${key ? `<span class="text-xs font-medium text-slate-500 w-28 shrink-0 pt-0.5 leading-relaxed">${key}</span>` : ''}
+        <span class="text-sm ${isNA ? 'text-slate-400 italic' : 'text-slate-800'} flex-1 leading-relaxed">${val}</span>
+      </div>`;
+    }).join('');
   });
 }
-
-function normalize(s) { return s.replace(/[\s\/\-]/g, '').toLowerCase(); }
 
 // ── Generate ────────────────────────────────────────────────────────
 async function generate() {
@@ -489,10 +452,24 @@ function copyAll() {
 
   SECTIONS.forEach((s, idx) => {
     txt += `${idx + 1}. ${s.title}\n`;
-    s.items.forEach(label => {
-      const el = document.getElementById(itemKey(s.id, label));
-      txt += `　· ${label}：${el ? el.textContent : '未提及'}\n`;
-    });
+    const body = document.getElementById(`body-${s.id}`);
+    if (!body) { txt += '\n'; return; }
+    // Extract rows: each .flex div is a bullet
+    const rows = body.querySelectorAll('.flex');
+    if (rows.length === 0) {
+      // Plain text (未提及)
+      txt += `　${body.textContent.trim()}\n`;
+    } else {
+      rows.forEach(row => {
+        const keyEl = row.querySelector('span:first-child');
+        const valEl = row.querySelector('span:last-child');
+        if (keyEl && valEl && keyEl !== valEl) {
+          txt += `　· ${keyEl.textContent.trim()}：${valEl.textContent.trim()}\n`;
+        } else if (valEl) {
+          txt += `　· ${valEl.textContent.trim()}\n`;
+        }
+      });
+    }
     txt += '\n';
   });
 
