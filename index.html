@@ -366,7 +366,8 @@ function renderParsed(raw) {
       const isNA = val === '未提及';
       return `<div class="flex items-start py-2.5 px-4 border-b border-slate-100 last:border-0">
         ${key ? `<span class="text-xs font-medium text-slate-500 w-28 shrink-0 pt-0.5 leading-relaxed">${key}</span>` : ''}
-        <span class="text-sm ${isNA ? 'text-slate-400 italic' : 'text-slate-800'} flex-1 leading-relaxed">${val}</span>
+        <span contenteditable="true" spellcheck="false"
+          class="text-sm ${isNA ? 'text-slate-400 italic' : 'text-slate-800'} flex-1 leading-relaxed outline-none rounded px-1 -mx-1 hover:bg-slate-50 focus:bg-blue-50 focus:ring-1 focus:ring-blue-300 transition-colors cursor-text">${val}</span>
       </div>`;
     }).join('');
   });
